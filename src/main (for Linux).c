@@ -1,4 +1,4 @@
-//テトリスver0.9 for Linux
+//テトリスver0.9.1 for Linux
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -96,9 +96,11 @@ int linekeshi(void){
         }
     }
     end:
-        for(j=bou[0]; j>=bou[0]-bou[1]; j--){
-            for(n=1; n<11; n++)
-                field[j][n] = field[j-(bou[0]-bou[1])][n];
+        if(linekazu > 0){
+            for(j=bou[0]; j>=bou[0]-bou[1]; j--){
+                for(n=1; n<11; n++)
+                    field[j][n] = field[j-(bou[0]-bou[1])][n];
+            }
         }
     }while(linekazu != 0);
     return 0;
