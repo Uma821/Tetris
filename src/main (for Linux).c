@@ -1,4 +1,4 @@
-//テトリスver0.9.1 for Linux
+//テトリスver0.9.2 for Linux
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -46,9 +46,8 @@ int main(void) {
     dainyu();
     hyoji();
     while(1) {
-        if(kbhit()){
+        if(kbhit())
             idou();
-        }
         if((double)(clock() - start_time) / CLOCKS_PER_SEC > dtime){
             sokoshirabe();
             start_time = clock();
@@ -66,7 +65,6 @@ int main(void) {
                 linekeshi();
                 sokoshirabe();
                 hyoji();
-                //l = linekeshi();
                 x++;
             }
         }
@@ -77,32 +75,32 @@ int main(void) {
 int linekeshi(void){
     do{
         linekazu = 0;
-    int i, j, n, bou[2];
-    for(i=19; i>=0; i--){
-        for(j=1; j<11; j++){
-            if(field[i][j] == 0){
-                if(linekazu > 0){
-                    bou[1] = i;
-                    goto end;
+        int i, j, n, bou[2];
+        for(i=19; i>=0; i--){
+            for(j=1; j<11; j++){
+                if(field[i][j] == 0){
+                    if(linekazu > 0){
+                        bou[1] = i;
+                        goto end;
+                    }
+                    break;
                 }
-                break;
-            }
-            if(j == 10){
-                if(linekazu == 0){
+                if(j == 10){
+                    if(linekazu == 0){
                     bou[0] = i;
+                    }
+                    linekazu++;
                 }
-                linekazu++;
             }
         }
-    }
-    end:
-        if(linekazu > 0){
-            for(j=bou[0]; j>=bou[0]-bou[1]; j--){
-                for(n=1; n<11; n++)
-                    field[j][n] = field[j-(bou[0]-bou[1])][n];
+        end:
+            if(linekazu > 0){
+                for(j=bou[0]; j>=bou[0]-bou[1]; j--){
+                    for(n=1; n<11; n++)
+                        field[j][n] = field[j-(bou[0]-bou[1])][n];
+                }
             }
-        }
-    }while(linekazu != 0);
+        }while(linekazu != 0);
     return 0;
 }
 
@@ -110,6 +108,7 @@ int idou(void){
     int rak = 0, rak2 = 0;
     char h = getchar();
     if(h == 'l'){
+        right:
         y++;
         rak = hyoji();
         rak2 = rakkahantei();
@@ -119,7 +118,8 @@ int idou(void){
             rak = rak2 = 0;
         }
     }
-    if(h == 'k'){
+    else if(h == 'k'){
+        left:
         y--;
         rak = hyoji();
         rak2 = rakkahantei();
@@ -129,7 +129,8 @@ int idou(void){
             rak = rak2 = 0;
         }
     }
-    if(h == 'm'){
+    else if(h == 'm'){
+        down:
         x++;
         rak = hyoji();
         rak2 = rakkahantei();
@@ -141,7 +142,8 @@ int idou(void){
             rak = rak2 = 0;
         }
     }
-    if(h == 'j'){
+    else if(h == 'j'){
+        turn:
         turnblok();
         rak = hyoji();
         rak2 = rakkahantei();
@@ -151,10 +153,37 @@ int idou(void){
             rak = rak2 = 0;
         }
     }
-    if(h == 'h'){
+    else if(h == 'h'){
         holdin();
         x = 0;
         y = 3;
+    }
+    //矢印キー入力①
+    else if(h == '\xe0'){
+        h = getchar();
+        if(h == '\x4D')
+            goto right;
+        else if(h == '\x4B')
+            goto left;
+        else if(h == '\x50')
+            goto down;
+        else if(h == '\x48')
+            goto turn;
+    }
+    //矢印キー入力②
+    else if(h == '\x1b'){
+        h = getchar();
+        if(h == '\x5b'){
+            h = getchar();
+            if(h == '\x43')
+                goto right;
+            else if(h == '\x44')
+                goto left;
+            else if(h == '\x42')
+                goto down;
+            else if(h == '\x41')
+               goto turn;
+        }
     }
     return 0;
 }
@@ -162,28 +191,24 @@ int idou(void){
 int holdin(void){
     if(holdnow == 0){
         for(int j=0;j<4;j++){
-            for(int i=0;i<4;i++){
+            for(int i=0;i<4;i++)
                 hold[j][i] = next[j][i][0];
-            }
         }
         holdnow = 1;
         dainyu();
     }
     else if(holdnow == 1){
         for(int j=0;j<4;j++){
-            for(int i=0;i<4;i++){
+            for(int i=0;i<4;i++)
                 holdtemp[j][i] = next[j][i][0];
-            }
         }
         for(int j=0;j<4;j++){
-            for(int i=0;i<4;i++){
+            for(int i=0;i<4;i++)
                 next[j][i][0] = block[j][i] = hold[j][i];
-            }
         }
         for(int j=0;j<4;j++){
-            for(int i=0;i<4;i++){
+            for(int i=0;i<4;i++)
                 hold[j][i] = holdtemp[j][i];
-            }
         }
     }
     return 0;
@@ -192,25 +217,22 @@ int holdin(void){
 void gturn(void){
     //配列回転の技でセーブしたtemp配列をblock配列に入れ直す→逆回転
     for(int i=0; i<4; i++){
-        for(int j=0; j<4; j++){
+        for(int j=0; j<4; j++)
             block[i][j] = temp[i][j];
-        }
     }
 }
 
 //配列回転の技
 int turnblok(void){
-	//セーブだよ
+    //セーブだよ
     for(int j=0;j<4;j++){
-        for(int i=0;i<4;i++){
+        for(int i=0;i<4;i++)
             temp[j][i] = block[j][i];
-        }
     }
     //ブロック回転ダ
-    for(int i = 0; i<4; i++) {
-        for(int j = 0; j<4; j++) {
+    for(int i = 0; i<4; i++){
+        for(int j = 0; j<4; j++)
             block[i][j] = temp[3-j][i];
-        }
     }
     return 1;
 }
@@ -224,12 +246,10 @@ int teityaku(void){
             for(int j=11; j>=0; j--){
                 if(y<=j && y+3>=j){
                     if(block[3-(x-i)][3-(y-1-j)] == 1){
-                        if(rakka2 == 1){
+                        if(rakka2 == 1)
                             field[i-1][j+1] = block[3-(x-i)][3-(y-1-j)];
-                        }
-                        else{
+                        else
                             field[i][j+1] = block[3-(x-i)][3-(y-1-j)];
-                        }
                     }
                 }
             }
@@ -257,9 +277,8 @@ int rakkahantei(void){
     for(int i=0; i<10; i++){
         xhantei = soko[i];
         if(i-y>=0 && i-y<4 && 3-(x+1-(20-xhantei))>=0 && 3-(x+1-(20-xhantei))<4){
-            if(block[3-(x+1-(20-xhantei))][i-y] == 1){
+            if(block[3-(x+1-(20-xhantei))][i-y] == 1)
                 return 1;
-            }
         }
     }
     return 0;
@@ -279,9 +298,8 @@ int nextpush(int n){
                            {{1,1,1,1},{1,1,1,1},{1,1,1,1},{1,1,1,1}} };
     //詰める
     for(int j=0;j<4;j++){
-        for(int i=0;i<4;i++){
+        for(int i=0;i<4;i++)
             next[j][i][n] = object[randamu][j][i];
-        }
     }
     return randamu;
 
@@ -384,9 +402,8 @@ int hyoji(void) {
         else{
             printf("|");
             rak = mainhyoji(a);
-            if(rak == 1){
+            if(rak == 1)
                 return 1;
-            }
             printf("|");
         }
 
@@ -410,9 +427,8 @@ void mainclear(void) {
     //field配列を0にリセットしておく
 	int i,j;
     for(i=0; i<20; i++){
-        for(j=0; j<12; j++){
+        for(j=0; j<12; j++)
             field[i][j] = 0;
-        }
     }
     /*nextpush関数でnext[][][1]に落ちてくるやつを設定しているので
     それを実際に落ちてくる配列blockと隠し配列next[][][0]にセットする*/
