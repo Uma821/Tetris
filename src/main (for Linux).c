@@ -1,4 +1,4 @@
-//テトリスver0.9.2 for Linux
+//テトリスver0.9.3 for Linux
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -21,6 +21,7 @@ int teityaku(void);
 int idou(void);
 int holdhyoji(int);
 int holdin(void);
+int game(void);
 int kbhit(void);
 int field[20][12];
 int block[4][4];
@@ -45,7 +46,7 @@ int main(void) {
     mainclear();
     dainyu();
     hyoji();
-    while(1) {
+    while(!game()) {
         if(kbhit())
             idou();
         if((double)(clock() - start_time) / CLOCKS_PER_SEC > dtime){
@@ -68,6 +69,15 @@ int main(void) {
                 x++;
             }
         }
+    }
+    puts("\033[2J\033[0;0f\033[31mGemeOver\033[m");
+    return 0;
+}
+
+int game(void){
+    for(int i=1; i<12; i++){
+        if(field[0][i] == 1)
+            return 1;
     }
     return 0;
 }
@@ -346,22 +356,30 @@ int mainhyoji(int a) {
     //field + block
     //main部分だけの表示を任された関数
     //[3-(x-a)]なのはそのままやると上下が反転するから
-    for(int j=1;j<11;j++){
-        if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4){
-            if(field[a][j] == 1 && block[3-(x-a)][j-y-1] == 1){
-                printf("??");
-                return 1;
+    for(int j=0;j<12;j++){
+        if(j>0 && j<11){
+            if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4){
+                if(field[a][j] == 1 && block[3-(x-a)][j-y-1] == 1){
+                    printf("??");
+                    return 1;
+                }
+                else if((field[a][j] == 1 && block[3-(x-a)][j-y-1] == 0) || (field[a][j] == 0 && block[3-(x-a)][j-y-1] == 1))
+                    printf("⬜");
+                else
+                    printf("  ");
             }
-            else if((field[a][j] == 1 && block[3-(x-a)][j-y-1] == 0) || (field[a][j] == 0 && block[3-(x-a)][j-y-1] == 1))
-                printf("⬜");
-            else
-                printf("  ");
-        }
+            else{
+                if(field[a][j] == 1)
+                    printf("⬜");
+                else
+                    printf("  ");
+            }
+    	}
         else{
-            if(field[a][j] == 1)
-                printf("⬜");
-            else
-                printf("  ");
+            if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4){
+                if(block[3-(x-a)][j-y-1] == 1)
+                    return 1;
+            }
         }
     }
     return 0;
@@ -382,7 +400,7 @@ int holdhyoji(int a){
 
 int hyoji(void) {
     //枠を表示する中身はほかの関数に任せる
-    printf("\033[2J");
+    printf("\033[2J\033[0;0f");
     int rak;
     for(int a=0;a<21;a++){
         if(a==0)
