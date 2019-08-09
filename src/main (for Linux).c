@@ -1,4 +1,4 @@
-//テトリスver0.9.3 for Linux
+//テトリスver1.0 for Linux
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -14,9 +14,7 @@ int turnblok(void);
 void gturn(void);
 void mainclear(void);
 void dainyu(void); //nextを一つ上げる
-int rakkahantei(void);
 int linekeshi(void);
-void sokoshirabe(void);
 int teityaku(void);
 int idou(void);
 int holdhyoji(int);
@@ -29,8 +27,6 @@ int next[4][4][4];
 int hold[4][4];
 int temp[4][4];
 int holdtemp[4][4];
-int rakka = 0;
-int rakka2 = 0;
 int x=0, y=3;
 int soko[10]={0,0,0,0,0,0,0,0,0,0};
 double dtime=1.0;
@@ -38,6 +34,7 @@ int holdnow = 0;
 int linekazu = 0;
 
 int main(void) {
+    int rakka = 0;
     time_t start_time = clock();
     srand((unsigned)time(NULL));
     nextpush(1);
@@ -50,21 +47,16 @@ int main(void) {
         if(kbhit())
             idou();
         if((double)(clock() - start_time) / CLOCKS_PER_SEC > dtime){
-            sokoshirabe();
             start_time = clock();
-            rakka2 = hyoji();
-            rakka = rakkahantei();
+            rakka = hyoji();
             x++;
-            if(rakka == 1 || rakka2 == 1){
-                sokoshirabe();
+            if(rakka == 1){
                 teityaku();
                 x = 0;
                 y = 3;
                 rakka = 0;
-                rakka2 = 0;
                 dainyu();
                 linekeshi();
-                sokoshirabe();
                 hyoji();
                 x++;
             }
@@ -83,6 +75,7 @@ int game(void){
 }
 
 int linekeshi(void){
+    //複数行揃ったら消す
     do{
         linekazu = 0;
         int i, j, n, bou[2];
@@ -115,52 +108,35 @@ int linekeshi(void){
 }
 
 int idou(void){
-    int rak = 0, rak2 = 0;
     char h = getchar();
     if(h == 'l'){
         right:
         y++;
-        rak = hyoji();
-        rak2 = rakkahantei();
-        if(rak == 1 || rak2 == 1){
+        while(hyoji()){
             y--;
-            hyoji();
-            rak = rak2 = 0;
         }
     }
     else if(h == 'k'){
         left:
         y--;
-        rak = hyoji();
-        rak2 = rakkahantei();
-        if(rak == 1 || rak2 == 1){
+        while(hyoji()){
             y++;
-            hyoji();
-            rak = rak2 = 0;
         }
     }
     else if(h == 'm'){
         down:
         x++;
-        rak = hyoji();
-        rak2 = rakkahantei();
         if(x > 19)
-            x = 19;
-        if(rak == 1 || rak2 == 1){
+            x = 20;
+        while(hyoji()){
             x--;
-            hyoji();
-            rak = rak2 = 0;
         }
     }
     else if(h == 'j'){
         turn:
         turnblok();
-        rak = hyoji();
-        rak2 = rakkahantei();
-        if(rak == 1 || rak2 == 1){
+        while(hyoji()){
             gturn();
-            hyoji();
-            rak = rak2 = 0;
         }
     }
     else if(h == 'h'){
@@ -199,6 +175,7 @@ int idou(void){
 }
 
 int holdin(void){
+    //holdに入れる
     if(holdnow == 0){
         for(int j=0;j<4;j++){
             for(int i=0;i<4;i++)
@@ -249,46 +226,15 @@ int turnblok(void){
 
 int teityaku(void){
     //地面に接触したものをfield配列に定着させる
-    //底を調べているsoko配列を更新する２つの役割がある
-
-    for(int i=19; i>=0; i--){
+    for(int i=20; i>=0; i--){
         if(x-1-3<=i && x-1>=i){
             for(int j=11; j>=0; j--){
                 if(y<=j && y+3>=j){
                     if(block[3-(x-i)][3-(y-1-j)] == 1){
-                        if(rakka2 == 1)
-                            field[i-1][j+1] = block[3-(x-i)][3-(y-1-j)];
-                        else
-                            field[i][j+1] = block[3-(x-i)][3-(y-1-j)];
+                        field[i-1][j+1] = block[3-(x-i)][3-(y-1-j)];
                     }
                 }
             }
-        }
-
-    }
-    return 0;
-}
-
-void sokoshirabe(void){
-    for(int i=1; i<11; i++){
-        for(int j=0; j<20; j++){
-            if(field[j][i] == 1 || j == 19){
-                soko[i-1] = 19-j;
-                break;
-            }
-        }
-    }
-}
-
-int rakkahantei(void){
-    //落下判定を行います、でもそんなに使いません
-	sokoshirabe();
-    int xhantei;
-    for(int i=0; i<10; i++){
-        xhantei = soko[i];
-        if(i-y>=0 && i-y<4 && 3-(x+1-(20-xhantei))>=0 && 3-(x+1-(20-xhantei))<4){
-            if(block[3-(x+1-(20-xhantei))][i-y] == 1)
-                return 1;
         }
     }
     return 0;
@@ -353,6 +299,7 @@ void nexthyoji(int a){
 }
 
 int mainhyoji(int a) {
+    int n = 20;
     //field + block
     //main部分だけの表示を任された関数
     //[3-(x-a)]なのはそのままやると上下が反転するから
@@ -374,12 +321,21 @@ int mainhyoji(int a) {
                 else
                     printf("  ");
             }
+            if(x-n>=0 && j-y-1>=0 && x-n<4 && j-y-1<4){
+                if(block[3-(x-n)][j-y-1] == 1)
+                    return 1;
+            }
     	}
         else{
             if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4){
                 if(block[3-(x-a)][j-y-1] == 1)
                     return 1;
             }
+            if(x-n>=0 && j-y-1>=0 && x-n<4 && j-y-1<4){
+                if(block[3-(x-n)][j-y-1] == 1)
+                    return 1;
+            }
+
         }
     }
     return 0;
