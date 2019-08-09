@@ -1,4 +1,4 @@
-//テトリスver1.1 for Windows
+//テトリスver1.2 for Windows
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -18,6 +18,8 @@ int idou(void);
 int holdhyoji(int);
 int holdin(void);
 int game(void);
+double kaizyo(double, int);
+int score = 0;
 int field[20][12];
 int block[4][4];
 int next[4][4][4];
@@ -60,6 +62,7 @@ int main(void) {
         }
     }
     puts("\033[2J\033[0;0f\033[31mGemeOver\033[m");
+    printf("あなたの得点は %d点です\n",score);
     return 0;
 }
 
@@ -91,13 +94,21 @@ int linekeshi(void){
                 }
             }
         end:
-            if(linekazu > 0)
+            if(linekazu > 0){
                 for(j=bou[0]; j>=bou[0]-bou[1]; j--)
                     for(n=1; n<11; n++)
                         field[j][n] = field[j-(bou[0]-bou[1])][n];
-
+                score = score + 10*linekazu*linekazu;
+                dtime = dtime*kaizyo(0.99, linekazu);
+            }
     }while(linekazu);
     return 0;
+}
+
+double kaizyo(double s, int n){
+    if(n == 1)
+        return s;
+    return s*kaizyo(s, n-1);
 }
 
 int idou(void){
@@ -237,7 +248,6 @@ int nextpush(int n){
         for(int i=0; i<4; i++)
             next[j][i][n] = object[randamu][j][i];
     return randamu;
-
 }
 
 void dainyu(void){
@@ -351,11 +361,18 @@ int hyoji(void) {
 
         if(a==0)
             printf("-hold-----");
-        else if(a==4)
+        else if(a==4 || a==9)
             printf("----------");
-        else if(a<4){
+        else if(a==5)
+            printf("-score----");
+        else if(a<9){
             printf("|");
-            holdhyoji(a);
+            if(a<4)
+                holdhyoji(a);
+            else if(a == 6 || a == 8)
+                printf("        ");
+            else if(a == 7)
+                printf(" %6d ",score);
             printf("|");
         }
 
