@@ -1,4 +1,4 @@
-//テトリスver1.2 for Windows
+//テトリスver1.2.1 for Windows
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -99,7 +99,7 @@ int linekeshi(void){
                     for(n=1; n<11; n++)
                         field[j][n] = field[j-(bou[0]-bou[1])][n];
                 score = score + 10*linekazu*linekazu;
-                dtime = dtime*kaizyo(0.99, linekazu);
+                dtime = kaizyo(0.997, score/10);
             }
     }while(linekazu);
     return 0;
