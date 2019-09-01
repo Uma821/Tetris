@@ -1,4 +1,4 @@
-//テトリスver1.3 for Windows-color1
+//テトリスver1.4 for Windows-color1
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -28,26 +28,16 @@ int holdin(void);
 int game(void);
 double kaizyo(double, int);
 int score = 0;
-int field[2][20][12];
+int field[20][12];
 int next[4][4][4];
+int block[4][4];
 int hold[4][4];
 int temp[4][4];
 int holdtemp[4][4];
 int x=0, y=3;
-int soko[10]={0,0,0,0,0,0,0,0,0,0};
 double dtime=1.0;
 int holdnow = 0;
 int linekazu = 0;
-
-struct block {
-    int block[4][4];
-    int bcolor;
-    int hcolor;
-    int htcolor;
-    int ncolor[4];
-};
-
-struct block block;
 
 int main(void) {
     int gcon = 1;
@@ -85,7 +75,7 @@ int main(void) {
 
 int game(void){
     for(int i=1; i<12; i++)
-        if(field[0][0][i])
+        if(field[0][i])
             return 0;
     return 1;
 }
@@ -97,8 +87,8 @@ int linekeshi(void){
         int i, j, n, bou[2];
         for(i=19; i>=0; i--)
             for(j=1; j<11; j++){
-                if(!field[0][i][j]){
-                    if(linekazu > 0){
+                if(!field[i][j]){
+                    if(linekazu){
                         bou[1] = i;
                         goto end;
                     }
@@ -111,12 +101,10 @@ int linekeshi(void){
                 }
             }
         end:
-            if(linekazu > 0){
+            if(linekazu){
                 for(j=bou[0]; j>=bou[0]-bou[1]; j--)
-                    for(n=1; n<11; n++){
-                        field[0][j][n] = field[0][j-(bou[0]-bou[1])][n];
-                        field[1][j][n] = field[1][j-(bou[0]-bou[1])][n];
-                    }
+                    for(n=1; n<11; n++)
+                        field[j][n] = field[j-(bou[0]-bou[1])][n];
                 score = score + 10*linekazu*linekazu;
                 dtime = kaizyo(0.997, score/10);
             }
@@ -203,7 +191,6 @@ int holdin(void){
         for(j=0; j<4; j++)
             for(i=0;i<4;i++)
                 hold[j][i] = next[j][i][0];
-        block.hcolor = block.ncolor[0];
         holdnow = 1;
         dainyu();
     }
@@ -211,15 +198,12 @@ int holdin(void){
         for(j=0; j<4; j++)
             for(i=0; i<4; i++)
                 holdtemp[j][i] = next[j][i][0];
-        block.htcolor = block.ncolor[0];
         for(j=0; j<4; j++)
             for(i=0; i<4; i++)
-                next[j][i][0] = block.block[j][i] = hold[j][i];
-        block.ncolor[0] = block.bcolor = block.hcolor;
+                next[j][i][0] = block[j][i] = hold[j][i];
         for(j=0; j<4; j++)
             for(i=0; i<4; i++)
                 hold[j][i] = holdtemp[j][i];
-        block.hcolor = block.htcolor;
     }
     return 0;
 }
@@ -228,39 +212,41 @@ void gturn(void){
     //配列回転の技でセーブしたtemp配列をblock.block配列に入れ直す→逆回転
     for(int i=0; i<4; i++)
         for(int j=0; j<4; j++)
-            block.block[i][j] = temp[i][j];
+            block[i][j] = temp[i][j];
 }
 
 //配列回転の技
 int turnblok(void){
-    int i, j;
+    int i, j, color;
     //セーブだよ
     for(j=0; j<4; j++)
-        for(i=0; i<4; i++)
-            temp[j][i] = block.block[j][i];
+        for(i=0; i<4; i++){
+            temp[j][i] = block[j][i];
+            if(block[j][i])
+                color = block[j][i];
+        }
     //ブロック回転ダ
-    if(block.bcolor == 0)
+    if(color == 1)
         for(i = 0; i<4; i++)
             for(j = 0; j<4; j++)
-                block.block[i][j] = temp[3-j][i];
-    else if(block.bcolor==2 || block.bcolor==2)
+                block[i][j] = temp[3-j][i];
+    else if(color==3)
         for(i=0; i<3; i++)
             for(j=0; j<3; j++)
-                block.block[i+1][j+1] = temp[3-j][i+1];
-    else if(block.bcolor != 5)
+                block[i+1][j+1] = temp[3-j][i+1];
+    else if(color != 6)
         for(i=0; i<3; i++)
             for(j=0; j<3; j++)
-                block.block[i+1][j] = temp[3-j][i];
+                block[i+1][j] = temp[3-j][i];
     return 1;
 }
 
 int teityaku(void){
-    //地面に接触したものをfield[0]配列に定着させる
-    for(int i=20; i>=0; i--)
-        for(int j=11; j>=0; j--)
-            if(x-1-3<=i && x-1>=i && y<=j && y+3>=j && block.block[3-(x-i)][3-(y-1-j)]){
-                field[0][i-1][j+1] = block.block[3-(x-i)][3-(y-1-j)];
-                field[1][i-1][j+1] = block.bcolor;
+    //地面に接触したものをfield配列に定着させる
+    for(int i=0; i<4; i++)
+        for(int j=0; j<4; j++)
+            if(block[i][j]){
+                field[x-(3-i)-2][y+j+1] = block[i][j];
             }
     return 0;
 }
@@ -280,8 +266,7 @@ int nextpush(int n){
     //詰める
     for(int j=0; j<4; j++)
         for(int i=0; i<4; i++)
-            next[j][i][n] = object[randamu][j][i];
-    block.ncolor[n] = randamu;
+            next[j][i][n] = object[randamu][j][i]*(randamu+1);
     return randamu;
 }
 
@@ -290,33 +275,30 @@ void dainyu(void){
     int i, j;
     for(i=0; i<4; i++)
         for(j=0; j<4; j++){
-            next[i][j][0] = block.block[i][j] = next[i][j][1];
+            next[i][j][0] = block[i][j] = next[i][j][1];
             next[i][j][1] = next[i][j][2];
             next[i][j][2] = next[i][j][3];
         }
-    block.ncolor[0] = block.bcolor = block.ncolor[1];
-    block.ncolor[1] = block.ncolor[2];
-    block.ncolor[2] = block.ncolor[3];
     nextpush(3);
 }
 
 void nexthyoji(int a){
     //next部分だけの表示を任された関数
     for(int j=0; j<4; j++){
-        if((block.ncolor[a/4+1]==6 && next[(a-1)%4][j][a/4+1]) || (block.ncolor[a/4+1]!=6 && next[a%4][j][a/4+1])){
-            if(block.ncolor[a/4+1] == 0)
+        if(next[(a-1)%4][j][a/4+1]== 7 || (next[a%4][j][a/4+1] != 7 &&next[a%4][j][a/4+1] > 0)){
+            if(next[a%4][j][a/4+1] == 1)
                 tomato
-            else if(block.ncolor[a/4+1] == 1)
+            else if(next[a%4][j][a/4+1] == 2)
                 yellow
-            else if(block.ncolor[a/4+1] == 2)
+            else if(next[a%4][j][a/4+1] == 3)
                 lightblue
-            else if(block.ncolor[a/4+1] == 3)
+            else if(next[a%4][j][a/4+1] == 4)
                 pink
-            else if(block.ncolor[a/4+1] == 4)
+            else if(next[a%4][j][a/4+1] == 5)
                 green
-            else if(block.ncolor[a/4+1] == 5)
+            else if(next[a%4][j][a/4+1] == 6)
                 orange
-            else if(block.ncolor[a/4+1] == 6)
+            else if(next[(a-1)%4][j][a/4+1] == 7)
                 blue
         }
         else
@@ -326,49 +308,49 @@ void nexthyoji(int a){
 
 int mainhyoji(int a) {
     int n = 20;
-    //field[0] + block.block
+    //field + block.block
     //main部分だけの表示を任された関数
     //[3-(x-a)]なのはそのままやると上下が反転するから
     for(int j=0; j<12; j++){
         if(j>0 && j<11){
-            if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && field[0][a][j] && block.block[3-(x-a)][j-y-1])
+            if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && field[a][j] && block[3-(x-a)][j-y-1])
                 return 1;
-            else if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && !field[0][a][j] && block.block[3-(x-a)][j-y-1]){
-                if(block.bcolor == 0)
+            else if(x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && !field[a][j] && block[3-(x-a)][j-y-1]){
+                if(block[3-(x-a)][j-y-1] == 1)
                     tomato
-                else if(block.bcolor == 1)
+                else if(block[3-(x-a)][j-y-1] == 2)
                     yellow
-                else if(block.bcolor == 2)
+                else if(block[3-(x-a)][j-y-1] == 3)
                     lightblue
-                else if(block.bcolor == 3)
+                else if(block[3-(x-a)][j-y-1] == 4)
                     pink
-                else if(block.bcolor == 4)
+                else if(block[3-(x-a)][j-y-1] == 5)
                     green
-                else if(block.bcolor == 5)
+                else if(block[3-(x-a)][j-y-1] == 6)
                     orange
-                else if(block.bcolor == 6)
+                else if(block[3-(x-a)][j-y-1] == 7)
                     blue
             }
-            else if(field[0][a][j] && ((x-a<0 || j-y-1<0 || x-a>=4 || j-y-1>=4) || (x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && !block.block[3-(x-a)][j-y-1]))){
-                if(field[1][a][j] == 0)
+            else if(field[a][j] && ((x-a<0 || j-y-1<0 || x-a>=4 || j-y-1>=4) || (x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && !block[3-(x-a)][j-y-1]))){
+                if(field[a][j] == 1)
                     tomato
-                else if(field[1][a][j] == 1)
+                else if(field[a][j] == 2)
                     yellow
-                else if(field[1][a][j] == 2)
+                else if(field[a][j] == 3)
                     lightblue
-                else if(field[1][a][j] == 3)
+                else if(field[a][j] == 4)
                     pink
-                else if(field[1][a][j] == 4)
+                else if(field[a][j] == 5)
                     green
-                else if(field[1][a][j] == 5)
+                else if(field[a][j] == 6)
                     orange
-                else if(field[1][a][j] == 6)
+                else if(field[a][j] == 7)
                     blue
             }
             else
                 printf("  ");
         }
-        if(((j<1 || j>10) && x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && block.block[3-(x-a)][j-y-1]) || (x-n>=0 && j-y-1>=0 && x-n<4 && j-y-1<4 && block.block[3-(x-n)][j-y-1]))
+        if(((j<1 || j>10) && x-a>=0 && j-y-1>=0 && x-a<4 && j-y-1<4 && block[3-(x-a)][j-y-1]) || (x-n>=0 && j-y-1>=0 && x-n<4 && j-y-1<4 && block[3-(x-n)][j-y-1]))
             return 1;
     }
     return 0;
@@ -378,20 +360,20 @@ int holdhyoji(int a){
     //hold部分だけの表示を任された関数
     for(int j=0; j<4; j++)
         if(a<4){
-            if((block.hcolor==6 && hold[a-1][j]) || (block.hcolor!=6 && hold[a][j])){
-                if(block.hcolor == 0)
+            if(hold[a-1][j]==7 || (hold[a][j]!=7 && hold[a][j]>0)){
+                if(hold[a][j] == 1)
                     tomato
-                else if(block.hcolor == 1)
+                else if(hold[a][j] == 2)
                     yellow
-                else if(block.hcolor == 2)
+                else if(hold[a][j] == 3)
                     lightblue
-                else if(block.hcolor == 3)
+                else if(hold[a][j] == 4)
                     pink
-                else if(block.hcolor == 4)
+                else if(hold[a][j] == 5)
                     green
-                else if(block.hcolor == 5)
+                else if(hold[a][j] == 6)
                     orange
-                else if(block.hcolor == 6)
+                else if(hold[a][j] == 7)
                     blue
             }
             else
@@ -449,16 +431,16 @@ int hyoji(void) {
 }
 
 void mainclear(void) {
-    //field[0]配列を0にリセットしておく
+    //field配列を0にリセットしておく
     int i, j;
     for(i=0; i<20; i++)
         for(j=0; j<12; j++)
-            field[0][i][j] = 0;
+            field[i][j] = 0;
     /*nextpush関数でnext[][][1]に落ちてくるやつを設定しているので
     それを実際に落ちてくる配列block.blockと隠し配列next[][][0]にセットする*/
     for(i=0; i<4; i++)
         for(j=0; j<4; j++){
-            next[i][j][0] = block.block[i][j] = next[i][j][1];
+            next[i][j][0] = block[i][j] = next[i][j][1];
             hold[i][j] = 0;
         }
 }
