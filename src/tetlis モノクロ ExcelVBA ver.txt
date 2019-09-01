@@ -1,0 +1,424 @@
+Option Explicit
+
+#If VBA7 Then
+'32bit PC
+Private Declare Function GetAsyncKeyState Lib "user32.dll" (ByVal vKey As Long) As Long
+#Else
+'64bit PC
+Private Declare PtrSafe Function GetAsyncKeyState Lib "user32.dll" (ByVal vKey As LongPtr) As Long
+#End If
+
+Dim score As Integer
+Dim field(2, 20, 12) As Integer
+Dim nexts(4, 4, 4) As Integer
+Dim temp(4, 4) As Integer
+Dim hold(4, 4) As Integer
+Dim holdtemp(4, 4) As Integer
+Dim x As Integer, y As Integer
+Dim dtime As Double
+Dim holdnow As Integer
+Dim linekazu As Integer
+Dim gcon As Integer
+
+Type bk
+    block(4, 4) As Integer
+    bcolor As Integer
+    hcolor As Integer
+    htcolor As Integer
+    ncolor(4) As Integer
+End Type
+
+Dim block As bk
+
+Sub Tetlis()
+    linekazu = 0
+    holdnow = 0
+    score = 0
+    dtime = 1
+    gcon = 1
+    x = 0: y = 3
+    Randomize
+    Dim i As Long, j As Integer: i = 0: j = 0
+    
+    Application.DisplayAlerts = False ' メッセージを非表示
+    Dim ws As Worksheet, flag As Boolean
+    Dim rng As Range
+    For Each ws In Worksheets
+        If ws.Name = "テトリス" Then flag = True
+    Next ws
+    If flag = True Then
+        Sheets("テトリス").Delete
+    End If
+    
+    Worksheets.Add
+    ActiveSheet.Name = "テトリス"
+    Range("B1:AJ27").EntireColumn.ColumnWidth = 2
+    Range("A2:AJ27").EntireRow.RowHeight = 15
+    
+    Call nextpush(1)
+    Call nextpush(2)
+    Call nextpush(3)
+    Call mainclear
+    Call dainyu
+    Call hyoji
+    
+    Set rng = Union(Range("D4:E4"), Range("Z4:AA4"), Range("Z11:AA11"), Range("Z12:AA12"))
+    rng.Merge True
+    rng.HorizontalAlignment = xlCenter
+    Cells(4, 4) = "next"
+    Cells(4, 26) = "hold"
+    Cells(11, 26) = "score"
+        
+    Union(Range("B4:B18"), Range("H4:H18"), Range("X4:X8"), Range("AD4:AD8"), Range("X11:X13"), Range("AD11:AD13")).Borders(xlEdgeLeft).color = RGB(0, 0, 0)
+    Union(Range("B3:G3"), Range("B8:G8"), Range("B13:G13"), Range("B18:G18"), Range("X3:AC3"), Range("X8:AC8"), Range("X10:AC10"), Range("X13:AC13")).Borders(xlEdgeBottom).color = RGB(0, 0, 0)
+    Set rng = Union(Range("J4:J24"), Range("U4:U24"), Range("K24:T24"))
+    rng.Interior.color = RGB(192, 192, 192)
+    rng.Borders.color = RGB(0, 0, 0)
+    
+    
+    Do While gcon
+        i = i + 1
+        Application.Wait [Now()] + 125 * dtime / 86400000
+        Call idou
+        If i Mod 8 = 0 Then
+            x = x + 1
+            If hyoji() Then
+                j = j + 1
+                x = x + 1
+                Call teityaku
+                gcon = game()
+                x = 0
+                y = 3
+                Call dainyu
+                Call linekeshi
+                x = x + 1
+                Range("C5:F17").ClearContents
+                Call hyoji
+            End If
+        End If
+    Loop
+    Range("A1:AD24").Clear
+    MsgBox "Game Fin!" & vbCrLf & "あなたの得点は " & score & "点です！", , "Game Fin!"
+    ActiveSheet.Delete
+    Application.DisplayAlerts = True
+End Sub
+
+Function game() As Integer
+    Dim i As Integer
+    For i = 0 To 11
+        If field(0, 0, i) Then
+            game = 0
+            Exit Function
+        End If
+    Next
+    game = 1
+End Function
+
+Function linekeshi()
+    Dim linekazu As Integer, i As Integer, j As Integer, n As Integer, bou(2) As Integer
+    Do
+        linekazu = 0
+        For i = 19 To 0 Step -1
+            For j = 1 To 10
+                If field(0, i, j) = 0 Then
+                    If linekazu Then
+                        bou(1) = i
+                        GoTo En
+                    End If
+                    Exit For
+                End If
+                If j = 10 Then
+                    If linekazu = 0 Then
+                        bou(0) = i
+                    End If
+                    linekazu = linekazu + 1
+                End If
+            Next
+        Next
+        
+En:
+        If linekazu Then
+            For j = bou(0) To bou(0) - bou(1) Step -1
+                For n = 1 To 10
+                    field(0, j, n) = field(0, j - (bou(0) - bou(1)), n)
+                    field(1, j, n) = field(1, j - (bou(0) - bou(1)), n)
+                Next
+            Next
+                score = score + 10 * linekazu * linekazu
+                dtime = kaizyo(0.997, score / 10)
+        End If
+    Loop While linekazu
+End Function
+
+Function kaizyo(ByVal s As Double, ByVal n As Integer) As Double
+    kaizyo = 1
+    For n = n To 1 Step -1
+        kaizyo = s * kaizyo
+    Next
+End Function
+
+Function idou()
+    ' 左
+    If GetAsyncKeyState(vbKeyLeft) <> 0 Then
+        y = y - 1
+        If hyoji() Then
+            y = y + 1
+            Call hyoji
+        End If
+    End If
+    ' 右
+    If GetAsyncKeyState(vbKeyRight) <> 0 Then
+        y = y + 1
+        If hyoji() Then
+            y = y - 1
+            Call hyoji
+        End If
+    End If
+    ' 下
+    If GetAsyncKeyState(vbKeyDown) <> 0 Then
+        x = x + 1
+        If hyoji() Then
+            x = x - 1
+            Call hyoji
+        End If
+    End If
+    ' 上 回転
+    If GetAsyncKeyState(vbKeyUp) <> 0 Then
+        Call turnblock
+        If hyoji() Then
+            Call gturn
+            Call hyoji
+        End If
+    End If
+    ' h hold
+    If GetAsyncKeyState(vbKeyH) <> 0 Then
+        Call holdin
+        x = 0
+        y = 3
+        Call hyoji
+    End If
+    ' Homeボタン 終了
+    If GetAsyncKeyState(vbKeyHome) <> 0 Then
+        MsgBox "Game Fin!" & vbCrLf & "あなたの記録は " & score & "点です！", , "Game Fin!"
+        End
+    End If
+End Function
+
+Function holdin()
+    Dim i As Integer, j As Integer
+    Range("Y5:AB7").Clear
+    If holdnow = 0 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                hold(j, i) = nexts(j, i, 0)
+            Next
+        Next
+        block.hcolor = block.ncolor(0)
+        holdnow = 1
+        Call dainyu
+        Range("C5:F17").ClearContents
+    Else
+        For j = 0 To 3
+            For i = 0 To 3
+                holdtemp(j, i) = nexts(j, i, 0)
+            Next
+        Next
+        block.htcolor = block.ncolor(0)
+        For j = 0 To 3
+            For i = 0 To 3
+                block.block(j, i) = hold(j, i)
+                nexts(j, i, 0) = hold(j, i)
+            Next
+        Next
+        block.bcolor = block.hcolor
+        block.ncolor(0) = block.hcolor
+        For j = 0 To 3
+            For i = 0 To 3
+                hold(j, i) = holdtemp(j, i)
+            Next
+        Next
+        block.hcolor = block.htcolor
+    End If
+End Function
+
+Function gturn()
+    Dim i As Integer, j As Integer
+        For j = 0 To 3
+            For i = 0 To 3
+                block.block(i, j) = temp(i, j)
+            Next
+        Next
+End Function
+
+Function turnblock()
+    Dim i As Integer, j As Integer
+    For j = 0 To 3
+        For i = 0 To 3
+            temp(j, i) = block.block(j, i)
+        Next
+    Next
+    If block.bcolor = 0 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                block.block(i, j) = temp(3 - j, i)
+            Next
+        Next
+    ElseIf block.bcolor = 2 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                block.block(i + 1, j + 1) = temp(3 - j, i + 1)
+            Next
+        Next
+    ElseIf block.bcolor <> 5 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                block.block(i + 1, j) = temp(3 - j, i)
+            Next
+        Next
+    End If
+    turnblock = 1
+End Function
+
+Function teityaku()
+    Dim i As Integer, j As Integer
+    For i = 0 To 3
+        For j = 0 To 3
+            If x - (3 - i) - 2 >= 0 And block.block(i, j) Then
+                field(0, x - (3 - i) - 2, y + j + 1) = block.block(i, j)
+                field(1, x - (3 - i) - 2, y + j + 1) = block.bcolor
+            End If
+        Next
+    Next
+End Function
+
+Function nextpush(ByVal n As Integer)
+    Dim i As Integer, j As Integer
+    Dim randamu As Integer: randamu = Int(7 * Rnd)
+    Dim object As Variant
+    object = Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, _
+                    0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, _
+                    0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, _
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, _
+                    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, _
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, _
+                    0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, _
+                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    
+            
+    For j = 0 To 3
+        For i = 0 To 3
+            nexts(j, i, n) = object(((randamu * 4) + j) * 4 + i)
+        Next
+    Next
+    block.ncolor(n) = randamu
+End Function
+
+Function dainyu()
+    Dim i As Integer, j As Integer
+    For i = 0 To 3
+        For j = 0 To 3
+            nexts(i, j, 0) = nexts(i, j, 1)
+            block.block(i, j) = nexts(i, j, 1)
+            nexts(i, j, 1) = nexts(i, j, 2)
+            nexts(i, j, 2) = nexts(i, j, 3)
+        Next
+    Next
+    block.bcolor = block.ncolor(1)
+    block.ncolor(0) = block.ncolor(1)
+    block.ncolor(1) = block.ncolor(2)
+    block.ncolor(2) = block.ncolor(3)
+    Call nextpush(3)
+End Function
+
+Function nexthyoji(ByVal a As Integer)
+    Dim j As Integer
+    For j = 0 To 3
+        If ((block.ncolor(Int(a / 5) + 1) = 6 And nexts((a - 1) Mod 5, j, Int(a / 5) + 1)) Or (block.ncolor(Int(a / 5) + 1) <> 6 And nexts(a Mod 5, j, Int(a / 5) + 1))) Then
+            Cells(a + 4, j + 3) = "■"
+        End If
+    Next
+End Function
+
+Function mainhyoji(ByVal a As Integer)
+    Dim n As Integer, j As Integer: n = 20
+    For j = 0 To 11
+        If j > 0 And j < 11 Then
+            If x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+                
+                If field(0, a, j) And block.block(3 - (x - a), j - y - 1) Then
+                    mainhyoji = 1
+                    Exit Function
+                ElseIf ((field(0, a, j) And block.block(3 - (x - a), j - y - 1) = 0) Or (field(0, a, j) = 0 And block.block(3 - (x - a), j - y - 1))) Then
+                    Cells(a + 4, j + 10) = "■"
+                End If
+            Else
+                If field(0, a, j) Then
+                    Cells(a + 4, j + 10) = "■"
+                End If
+            End If
+            If x - n >= 0 And j - y - 1 >= 0 And x - n < 4 And j - y - 1 < 4 Then
+                If block.block(3 - (x - n), j - y - 1) > 0 Then
+                    mainhyoji = 1
+                    Exit Function
+                End If
+            End If
+        ElseIf x - n >= 0 And j - y - 1 >= 0 And x - n < 4 And j - y - 1 < 4 Then
+            If block.block(3 - (x - n), j - y - 1) > 0 Then
+                mainhyoji = 1
+                Exit Function
+            End If
+        ElseIf x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+            If block.block(3 - (x - a), j - y - 1) > 0 Then
+                mainhyoji = 1
+                Exit Function
+            End If
+        End If
+    Next
+End Function
+
+Function holdhyoji(ByVal a As Integer)
+    Dim j As Integer
+    For j = 0 To 3
+        If ((block.hcolor = 6 And hold(a, j)) Or (block.hcolor <> 6 And hold(a + 1, j))) Then
+            Cells(a + 5, j + 25) = "■"
+        End If
+    Next
+End Function
+
+Function hyoji() As Integer
+    Dim a As Integer, j As Integer, i As Integer
+    
+    Range("K4:T23").Clear
+    For a = 0 To 20
+        If Int(a / 5) < 3 And a Mod 5 <> 0 And a Mod 5 < 4 Then
+            Call nexthyoji(a)
+        End If
+        If a < 20 Then
+            If mainhyoji(a) Then
+                hyoji = 1
+                Exit Function
+            End If
+        End If
+        If a < 3 Then
+            Call holdhyoji(a)
+        End If
+    Next
+    Cells(12, 26) = score
+    
+End Function
+
+Function mainclear()
+    Dim i As Integer, j As Integer
+    For i = 0 To 19
+        For j = 0 To 11
+            field(0, i, j) = 0
+        Next
+    Next
+    For i = 0 To 3
+        For j = 0 To 3
+            block.block(i, j) = nexts(i, j, 1)
+            nexts(i, j, 0) = nexts(i, j, 1)
+            hold(i, j) = 0
+        Next
+    Next
+End Function
