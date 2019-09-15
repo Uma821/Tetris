@@ -9,45 +9,36 @@ Private Declare PtrSafe Function GetAsyncKeyState Lib "user32.dll" (ByVal vKey A
 #End If
 
 Dim score As Integer
-Dim field(2, 20, 12) As Integer
+Dim field(20, 12) As Integer
+Dim hyfield(20, 12, 2) As Integer
 Dim nexts(4, 4, 4) As Integer
+Dim block(4, 4) As Integer
 Dim temp(4, 4) As Integer
 Dim hold(4, 4) As Integer
 Dim holdtemp(4, 4) As Integer
 Dim x As Integer, y As Integer
 Dim dtime As Double
 Dim holdnow As Integer
-Dim linekazu As Integer
 Dim gcon As Integer
 
-Type bk
-    block(4, 4) As Integer
-    bcolor As Integer
-    hcolor As Integer
-    htcolor As Integer
-    ncolor(4) As Integer
-End Type
-
-Dim block As bk
-
-Sub Tetlis()
-    linekazu = 0
+Sub Tetlis_monolutemp()
     holdnow = 0
     score = 0
     dtime = 1
     gcon = 1
-    x = 0: y = 3
+    x = -1: y = 3
     Randomize
-    Dim i As Long, j As Integer: i = 0: j = 0
+    Dim start_time As Double
     
-    Application.DisplayAlerts = False ' メッセージを非表示
     Dim ws As Worksheet, flag As Boolean
     Dim rng As Range
     For Each ws In Worksheets
         If ws.Name = "テトリス" Then flag = True
     Next ws
     If flag = True Then
+        Application.DisplayAlerts = False ' メッセージを非表示
         Sheets("テトリス").Delete
+        Application.DisplayAlerts = True
     End If
     
     Worksheets.Add
@@ -75,19 +66,23 @@ Sub Tetlis()
     rng.Interior.color = RGB(192, 192, 192)
     rng.Borders.color = RGB(0, 0, 0)
     
-    
+    start_time = Timer
+    Range("K4:T23") = "■"
+    Range("K4:T23").Font.color = RGB(255, 255, 255)
     Do While gcon
-        i = i + 1
-        Application.Wait [Now()] + 125 * dtime / 86400000
+        '↓軽すぎたのでちょっとおもりを付けた
+        ' 感度を上げたいなら60/86400000の値をいじって、より小さい値にする
+        Application.Wait [Now()] + 60 / 86400000
+        
         Call idou
-        If i Mod 8 = 0 Then
+        If Timer - start_time > dtime Then
+            start_time = Timer
             x = x + 1
             If hyoji() Then
-                j = j + 1
                 x = x + 1
                 Call teityaku
                 gcon = game()
-                x = 0
+                x = -1
                 y = 3
                 Call dainyu
                 Call linekeshi
@@ -99,6 +94,7 @@ Sub Tetlis()
     Loop
     Range("A1:AD24").Clear
     MsgBox "Game Fin!" & vbCrLf & "あなたの得点は " & score & "点です！", , "Game Fin!"
+    Application.DisplayAlerts = False
     ActiveSheet.Delete
     Application.DisplayAlerts = True
 End Sub
@@ -106,7 +102,7 @@ End Sub
 Function game() As Integer
     Dim i As Integer
     For i = 0 To 11
-        If field(0, 0, i) Then
+        If field(0, i) Then
             game = 0
             Exit Function
         End If
@@ -120,7 +116,7 @@ Function linekeshi()
         linekazu = 0
         For i = 19 To 0 Step -1
             For j = 1 To 10
-                If field(0, i, j) = 0 Then
+                If field(i, j) = 0 Then
                     If linekazu Then
                         bou(1) = i
                         GoTo En
@@ -140,8 +136,7 @@ En:
         If linekazu Then
             For j = bou(0) To bou(0) - bou(1) Step -1
                 For n = 1 To 10
-                    field(0, j, n) = field(0, j - (bou(0) - bou(1)), n)
-                    field(1, j, n) = field(1, j - (bou(0) - bou(1)), n)
+                    field(j, n) = field(j - (bou(0) - bou(1)), n)
                 Next
             Next
                 score = score + 10 * linekazu * linekazu
@@ -165,40 +160,35 @@ Function idou()
             y = y + 1
             Call hyoji
         End If
-    End If
     ' 右
-    If GetAsyncKeyState(vbKeyRight) <> 0 Then
+    ElseIf GetAsyncKeyState(vbKeyRight) <> 0 Then
         y = y + 1
         If hyoji() Then
             y = y - 1
             Call hyoji
         End If
-    End If
     ' 下
-    If GetAsyncKeyState(vbKeyDown) <> 0 Then
+    ElseIf GetAsyncKeyState(vbKeyDown) <> 0 Then
         x = x + 1
         If hyoji() Then
             x = x - 1
             Call hyoji
         End If
-    End If
     ' 上 回転
-    If GetAsyncKeyState(vbKeyUp) <> 0 Then
+    ElseIf GetAsyncKeyState(vbKeyUp) <> 0 Then
         Call turnblock
         If hyoji() Then
             Call gturn
             Call hyoji
         End If
-    End If
     ' h hold
-    If GetAsyncKeyState(vbKeyH) <> 0 Then
+    ElseIf GetAsyncKeyState(vbKeyH) <> 0 Then
         Call holdin
         x = 0
         y = 3
         Call hyoji
-    End If
     ' Homeボタン 終了
-    If GetAsyncKeyState(vbKeyHome) <> 0 Then
+    ElseIf GetAsyncKeyState(vbKeyHome) <> 0 Then
         MsgBox "Game Fin!" & vbCrLf & "あなたの記録は " & score & "点です！", , "Game Fin!"
         End
     End If
@@ -213,7 +203,6 @@ Function holdin()
                 hold(j, i) = nexts(j, i, 0)
             Next
         Next
-        block.hcolor = block.ncolor(0)
         holdnow = 1
         Call dainyu
         Range("C5:F17").ClearContents
@@ -223,21 +212,17 @@ Function holdin()
                 holdtemp(j, i) = nexts(j, i, 0)
             Next
         Next
-        block.htcolor = block.ncolor(0)
         For j = 0 To 3
             For i = 0 To 3
-                block.block(j, i) = hold(j, i)
+                block(j, i) = hold(j, i)
                 nexts(j, i, 0) = hold(j, i)
             Next
         Next
-        block.bcolor = block.hcolor
-        block.ncolor(0) = block.hcolor
         For j = 0 To 3
             For i = 0 To 3
                 hold(j, i) = holdtemp(j, i)
             Next
         Next
-        block.hcolor = block.htcolor
     End If
 End Function
 
@@ -245,34 +230,37 @@ Function gturn()
     Dim i As Integer, j As Integer
         For j = 0 To 3
             For i = 0 To 3
-                block.block(i, j) = temp(i, j)
+                block(i, j) = temp(i, j)
             Next
         Next
 End Function
 
 Function turnblock()
-    Dim i As Integer, j As Integer
+    Dim i As Integer, j As Integer, color As Integer
     For j = 0 To 3
         For i = 0 To 3
-            temp(j, i) = block.block(j, i)
+            temp(j, i) = block(j, i)
+            If block(j, i) Then
+                color = block(j, i)
+            End If
         Next
     Next
-    If block.bcolor = 0 Then
+    If color = 1 Then
         For j = 0 To 3
             For i = 0 To 3
-                block.block(i, j) = temp(3 - j, i)
+                block(i, j) = temp(3 - j, i)
             Next
         Next
-    ElseIf block.bcolor = 2 Then
+    ElseIf color = 3 Then
         For j = 0 To 3
             For i = 0 To 3
-                block.block(i + 1, j + 1) = temp(3 - j, i + 1)
+                block(i + 1, j + 1) = temp(3 - j, i + 1)
             Next
         Next
-    ElseIf block.bcolor <> 5 Then
+    ElseIf color <> 6 Then
         For j = 0 To 3
             For i = 0 To 3
-                block.block(i + 1, j) = temp(3 - j, i)
+                block(i + 1, j) = temp(3 - j, i)
             Next
         Next
     End If
@@ -283,9 +271,8 @@ Function teityaku()
     Dim i As Integer, j As Integer
     For i = 0 To 3
         For j = 0 To 3
-            If x - (3 - i) - 2 >= 0 And block.block(i, j) Then
-                field(0, x - (3 - i) - 2, y + j + 1) = block.block(i, j)
-                field(1, x - (3 - i) - 2, y + j + 1) = block.bcolor
+            If x - (3 - i) - 2 >= 0 And block(i, j) Then
+                field(x - (3 - i) - 2, y + j + 1) = block(i, j)
             End If
         Next
     Next
@@ -307,10 +294,9 @@ Function nextpush(ByVal n As Integer)
             
     For j = 0 To 3
         For i = 0 To 3
-            nexts(j, i, n) = object(((randamu * 4) + j) * 4 + i)
+            nexts(j, i, n) = object(((randamu * 4) + j) * 4 + i) * (randamu + 1)
         Next
     Next
-    block.ncolor(n) = randamu
 End Function
 
 Function dainyu()
@@ -318,22 +304,18 @@ Function dainyu()
     For i = 0 To 3
         For j = 0 To 3
             nexts(i, j, 0) = nexts(i, j, 1)
-            block.block(i, j) = nexts(i, j, 1)
+            block(i, j) = nexts(i, j, 1)
             nexts(i, j, 1) = nexts(i, j, 2)
             nexts(i, j, 2) = nexts(i, j, 3)
         Next
     Next
-    block.bcolor = block.ncolor(1)
-    block.ncolor(0) = block.ncolor(1)
-    block.ncolor(1) = block.ncolor(2)
-    block.ncolor(2) = block.ncolor(3)
     Call nextpush(3)
 End Function
 
 Function nexthyoji(ByVal a As Integer)
     Dim j As Integer
     For j = 0 To 3
-        If ((block.ncolor(Int(a / 5) + 1) = 6 And nexts((a - 1) Mod 5, j, Int(a / 5) + 1)) Or (block.ncolor(Int(a / 5) + 1) <> 6 And nexts(a Mod 5, j, Int(a / 5) + 1))) Then
+        If ((nexts((a - 1) Mod 5, j, Int(a / 5) + 1) = 7) Or (nexts(a Mod 5, j, Int(a / 5) + 1) <> 7 And nexts(a Mod 5, j, Int(a / 5) + 1) > 0)) Then
             Cells(a + 4, j + 3) = "■"
         End If
     Next
@@ -343,32 +325,30 @@ Function mainhyoji(ByVal a As Integer)
     Dim n As Integer, j As Integer: n = 20
     For j = 0 To 11
         If j > 0 And j < 11 Then
-            If x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
-                
-                If field(0, a, j) And block.block(3 - (x - a), j - y - 1) Then
-                    mainhyoji = 1
-                    Exit Function
-                ElseIf ((field(0, a, j) And block.block(3 - (x - a), j - y - 1) = 0) Or (field(0, a, j) = 0 And block.block(3 - (x - a), j - y - 1))) Then
-                    Cells(a + 4, j + 10) = "■"
+            If a >= 0 Then
+                hyfield(a, j, 0) = 0
+                If a >= 0 And x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+                    If field(a, j) And block(3 - (x - a), j - y - 1) > 0 Then
+                        mainhyoji = 1
+                        Exit Function
+                    ElseIf field(a, j) = 0 And block(3 - (x - a), j - y - 1) Then
+                        hyfield(a, j, 0) = block(3 - (x - a), j - y - 1)
+                    End If
                 End If
-            Else
-                If field(0, a, j) Then
-                    Cells(a + 4, j + 10) = "■"
-                End If
-            End If
-            If x - n >= 0 And j - y - 1 >= 0 And x - n < 4 And j - y - 1 < 4 Then
-                If block.block(3 - (x - n), j - y - 1) > 0 Then
-                    mainhyoji = 1
-                    Exit Function
+                If a >= 0 And field(a, j) Then
+                    hyfield(a, j, 0) = field(a, j)
                 End If
             End If
-        ElseIf x - n >= 0 And j - y - 1 >= 0 And x - n < 4 And j - y - 1 < 4 Then
-            If block.block(3 - (x - n), j - y - 1) > 0 Then
+        ' ↓壁
+        ElseIf x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+            If block(3 - (x - a), j - y - 1) Then
                 mainhyoji = 1
                 Exit Function
             End If
-        ElseIf x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
-            If block.block(3 - (x - a), j - y - 1) > 0 Then
+        End If
+        ' ↓着地
+        If x - n >= 0 And j - y - 1 >= 0 And x - n < 4 And j - y - 1 < 4 Then
+            If block(3 - (x - n), j - y - 1) Then
                 mainhyoji = 1
                 Exit Function
             End If
@@ -379,22 +359,21 @@ End Function
 Function holdhyoji(ByVal a As Integer)
     Dim j As Integer
     For j = 0 To 3
-        If ((block.hcolor = 6 And hold(a, j)) Or (block.hcolor <> 6 And hold(a + 1, j))) Then
+        If (hold(a, j) = 7 Or (hold(a + 1, j) <> 7 And hold(a + 1, j) > 0)) Then
             Cells(a + 5, j + 25) = "■"
         End If
     Next
 End Function
 
 Function hyoji() As Integer
-    Dim a As Integer, j As Integer, i As Integer
+    Dim a As Integer, j As Integer
     
-    Range("K4:T23").Clear
     For a = 0 To 20
         If Int(a / 5) < 3 And a Mod 5 <> 0 And a Mod 5 < 4 Then
             Call nexthyoji(a)
         End If
         If a < 20 Then
-            If mainhyoji(a) Then
+            If mainhyoji(a) Or mainhyoji(-1) Or mainhyoji(-2) Then
                 hyoji = 1
                 Exit Function
             End If
@@ -403,20 +382,36 @@ Function hyoji() As Integer
             Call holdhyoji(a)
         End If
     Next
+    For a = 0 To 20
+        For j = 1 To 10
+            If hyfield(a, j, 0) And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
+                Cells(a + 4, j + 10).Font.color = RGB(1, 1, 1)
+                ' 色を付ける
+            ElseIf hyfield(a, j, 0) = 0 And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
+                ' 透明にする（このやり方の方が表示が良かった）
+                Cells(a + 4, j + 10).Font.color = RGB(255, 255, 255)
+            End If
+        Next
+    Next
+    For a = 0 To 20
+        For j = 1 To 10
+            hyfield(a, j, 1) = hyfield(a, j, 0)
+        Next
+    Next
     Cells(12, 26) = score
-    
 End Function
 
 Function mainclear()
     Dim i As Integer, j As Integer
     For i = 0 To 19
         For j = 0 To 11
-            field(0, i, j) = 0
+            field(i, j) = 0
+            hyfield(i, j, 1) = 0
         Next
     Next
     For i = 0 To 3
         For j = 0 To 3
-            block.block(i, j) = nexts(i, j, 1)
+            block(i, j) = nexts(i, j, 1)
             nexts(i, j, 0) = nexts(i, j, 1)
             hold(i, j) = 0
         Next

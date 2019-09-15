@@ -376,7 +376,7 @@ int holdhyoji(int a){
                     green
                 else if(hold[a][j] == 6)
                     orange
-                else if(hold[a][j] == 7)
+                else if(hold[a-1][j] == 7)
                     blue
             }
             else
