@@ -21,7 +21,7 @@ Dim dtime As Double
 Dim holdnow As Integer
 Dim gcon As Integer
 
-Sub Tetlis_monolutemp()
+Sub Tetlis_mono()
     holdnow = 0
     score = 0
     dtime = 1
@@ -94,9 +94,6 @@ Sub Tetlis_monolutemp()
     Loop
     Range("A1:AD24").Clear
     MsgBox "Game Fin!" & vbCrLf & "あなたの得点は " & score & "点です！", , "Game Fin!"
-    Application.DisplayAlerts = False
-    ActiveSheet.Delete
-    Application.DisplayAlerts = True
 End Sub
 
 Function game() As Integer
@@ -187,11 +184,42 @@ Function idou()
         x = 0
         y = 3
         Call hyoji
+    ' s Stop
+    ElseIf GetAsyncKeyState(vbKeyS) <> 0 Then
+        Call stopgame
+        Application.Wait [Now()] + 100 / 86400000
+    ' Enter 落下
+    ElseIf GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyL) <> 0 Or GetAsyncKeyState(vbKeySpace) <> 0 Then
+        Call rakka
+        If hyoji() Then
+            x = x - 1
+            Call hyoji
+        End If
     ' Homeボタン 終了
     ElseIf GetAsyncKeyState(vbKeyHome) <> 0 Then
         MsgBox "Game Fin!" & vbCrLf & "あなたの記録は " & score & "点です！", , "Game Fin!"
         End
     End If
+End Function
+
+Function stopgame()
+    Cells(2, 30) = 100
+    Application.Wait [Now()] + 100 / 86400000
+    Do Until GetAsyncKeyState(vbKeyS) <> 0
+        Application.Wait [Now()] + 100 / 86400000
+    Loop
+End Function
+
+Function rakka()
+    Dim a As Integer, i As Integer
+    For i = 0 To 19
+        For a = 0 To 19
+            If mainhyoji(a) Then
+                Exit Function
+            End If
+        Next
+    x = x + 1
+    Next
 End Function
 
 Function holdin()
