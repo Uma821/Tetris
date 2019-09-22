@@ -19,10 +19,12 @@ Dim holdtemp(4, 4) As Integer
 Dim x As Integer, y As Integer
 Dim dtime As Double
 Dim holdnow As Integer
+Dim usehold As Integer
 Dim gcon As Integer
 
 Sub Tetlis_mono()
     holdnow = 0
+    usehold = 0
     score = 0
     dtime = 1
     gcon = 1
@@ -56,9 +58,10 @@ Sub Tetlis_mono()
     Set rng = Union(Range("D4:E4"), Range("Z4:AA4"), Range("Z11:AA11"), Range("Z12:AA12"))
     rng.Merge True
     rng.HorizontalAlignment = xlCenter
-    Cells(4, 4) = "next"
-    Cells(4, 26) = "hold"
-    Cells(11, 26) = "score"
+    Range("D4") = "next"
+    Range("Z4") = "hold"
+    Range("Z11") = "score"
+    Range("Z12") = score
         
     Union(Range("B4:B18"), Range("H4:H18"), Range("X4:X8"), Range("AD4:AD8"), Range("X11:X13"), Range("AD11:AD13")).Borders(xlEdgeLeft).color = RGB(0, 0, 0)
     Union(Range("B3:G3"), Range("B8:G8"), Range("B13:G13"), Range("B18:G18"), Range("X3:AC3"), Range("X8:AC8"), Range("X10:AC10"), Range("X13:AC13")).Borders(xlEdgeBottom).color = RGB(0, 0, 0)
@@ -67,8 +70,8 @@ Sub Tetlis_mono()
     rng.Borders.color = RGB(0, 0, 0)
     
     start_time = Timer
-    Range("K4:T23") = "■"
-    Range("K4:T23").Font.color = RGB(255, 255, 255)
+    Union(Range("K4:T23"), Range("Y5:AB7")) = "■"
+    Union(Range("K4:T23"), Range("Y5:AB7")).Font.color = RGB(255, 255, 255)
     Do While gcon
         '↓軽すぎたのでちょっとおもりを付けた
         ' 感度を上げたいなら60/86400000の値をいじって、より小さい値にする
@@ -80,6 +83,7 @@ Sub Tetlis_mono()
             x = x + 1
             If hyoji() Then
                 x = x + 1
+                usehold = 0
                 Call teityaku
                 gcon = game()
                 x = -1
@@ -92,7 +96,8 @@ Sub Tetlis_mono()
             End If
         End If
     Loop
-    Range("A1:AD24").Clear
+    Do While GetAsyncKeyState(vbKeyS) <> 0 Or GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyHome) <> 0 Or GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyLeft) <> 0 Or GetAsyncKeyState(vbKeyRight) <> 0 Or GetAsyncKeyState(vbKeyDown) <> 0 Or GetAsyncKeyState(vbKeyUp) <> 0
+    Loop
     MsgBox "Game Fin!" & vbCrLf & "あなたの得点は " & score & "点です！", , "Game Fin!"
 End Sub
 
@@ -136,10 +141,16 @@ En:
                     field(j, n) = field(j - (bou(0) - bou(1)), n)
                 Next
             Next
+            For j = bou(0) - bou(1) - 1 To 0 Step -1
+                For n = 1 To 10
+                    field(j, n) = 0
+                Next
+            Next
                 score = score + 10 * linekazu * linekazu
                 dtime = kaizyo(0.997, score / 10)
         End If
     Loop While linekazu
+    Cells(12, 26) = score
 End Function
 
 Function kaizyo(ByVal s As Double, ByVal n As Integer) As Double
@@ -157,57 +168,148 @@ Function idou()
             y = y + 1
             Call hyoji
         End If
+    End If
     ' 右
-    ElseIf GetAsyncKeyState(vbKeyRight) <> 0 Then
+    If GetAsyncKeyState(vbKeyRight) <> 0 Then
         y = y + 1
         If hyoji() Then
             y = y - 1
             Call hyoji
         End If
+    End If
     ' 下
-    ElseIf GetAsyncKeyState(vbKeyDown) <> 0 Then
+    If GetAsyncKeyState(vbKeyDown) <> 0 Then
         x = x + 1
         If hyoji() Then
             x = x - 1
             Call hyoji
         End If
-    ' 上 回転
-    ElseIf GetAsyncKeyState(vbKeyUp) <> 0 Then
-        Call turnblock
+    End If
+    ' 上 右回転
+    If GetAsyncKeyState(vbKeyUp) <> 0 Or GetAsyncKeyState(vbKeyX) <> 0 Then
+        Call rightturnblock
         If hyoji() Then
             Call gturn
             Call hyoji
         End If
+    End If
+    ' CTRL 左回転
+    If GetAsyncKeyState(vbKeyControl) <> 0 Or GetAsyncKeyState(vbKeyZ) <> 0 Then
+        Call leftturnblock
+        If hyoji() Then
+            Call gturn
+            Call hyoji
+        End If
+    End If
     ' h hold
-    ElseIf GetAsyncKeyState(vbKeyH) <> 0 Then
+    If GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyShift) <> 0 Or GetAsyncKeyState(vbKeyC) <> 0 Then
+        Do While GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyShift) <> 0 Or GetAsyncKeyState(vbKeyC) <> 0
+        Loop
+        Dim i As Integer, j As Integer, color(2) As Integer
+        
+        If usehold Then
+            Do While GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyShift) <> 0 Or GetAsyncKeyState(vbKeyC) <> 0
+            Loop
+            GoTo Stopnext
+        End If
         Call holdin
+        usehold = 1
         x = 0
         y = 3
-        Call hyoji
+        
+        For j = 0 To 3
+            For i = 0 To 3
+                If hold(j, i) Then
+                    color(0) = hold(j, i)
+                End If
+                If block(j, i) Then
+                    color(1) = nexts(j, i, 0)
+                End If
+            Next
+        Next
+        
+        If color(0) <> color(1) Then
+            Range("Y5:AB7").Font.color = RGB(255, 255, 255)
+            Call hyoji
+        End If
+        Do While GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyShift) <> 0 Or GetAsyncKeyState(vbKeyC) <> 0
+        Loop
+    End If
+Stopnext:
     ' s Stop
-    ElseIf GetAsyncKeyState(vbKeyS) <> 0 Then
+    If GetAsyncKeyState(vbKeyS) <> 0 Then
         Call stopgame
-        Application.Wait [Now()] + 100 / 86400000
+    End If
     ' Enter 落下
-    ElseIf GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyL) <> 0 Or GetAsyncKeyState(vbKeySpace) <> 0 Then
+    If GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyL) <> 0 Or GetAsyncKeyState(vbKeySpace) <> 0 Then
         Call rakka
         If hyoji() Then
             x = x - 1
             Call hyoji
         End If
+        Do While GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyL) <> 0 Or GetAsyncKeyState(vbKeySpace) <> 0
+        Loop
+    End If
     ' Homeボタン 終了
-    ElseIf GetAsyncKeyState(vbKeyHome) <> 0 Then
+    If GetAsyncKeyState(vbKeyHome) <> 0 Then
         MsgBox "Game Fin!" & vbCrLf & "あなたの記録は " & score & "点です！", , "Game Fin!"
         End
     End If
+    'Do While GetAsyncKeyState(vbKeyS) <> 0 Or GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0 Or GetAsyncKeyState(vbKeyHome) <> 0 Or GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyLeft) <> 0 Or GetAsyncKeyState(vbKeyRight) <> 0 Or GetAsyncKeyState(vbKeyDown) <> 0 Or GetAsyncKeyState(vbKeyUp) <> 0
+    'Loop
 End Function
 
 Function stopgame()
-    Cells(2, 30) = 100
-    Application.Wait [Now()] + 100 / 86400000
-    Do Until GetAsyncKeyState(vbKeyS) <> 0
+    Range("A1:AD24").ClearContents
+    Range("D4") = "next"
+    Range("Z4") = "hold"
+    Range("Z11") = "score"
+    
+    Application.Wait [Now()] + 200 / 86400000
+    Do Until GetAsyncKeyState(vbKeyS) <> 0 Or GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0
+        Do While GetAsyncKeyState(vbKeyHome) <> 0 Or GetAsyncKeyState(vbKeyH) <> 0 Or GetAsyncKeyState(vbKeyLeft) <> 0 Or GetAsyncKeyState(vbKeyRight) <> 0 Or GetAsyncKeyState(vbKeyDown) <> 0 Or GetAsyncKeyState(vbKeyUp) <> 0
+        Loop
         Application.Wait [Now()] + 100 / 86400000
     Loop
+    
+    Do While GetAsyncKeyState(vbKeyS) <> 0 Or GetAsyncKeyState(vbKeyReturn) <> 0 Or GetAsyncKeyState(vbKeySeparator) <> 0
+    Loop
+    
+    Range("Z12") = score
+    Union(Range("K4:T23"), Range("Y5:AB7")) = "■"
+    Call hyoji
+End Function
+
+Function leftturnblock()
+    Dim i As Integer, j As Integer, color As Integer
+    For j = 0 To 3
+        For i = 0 To 3
+            temp(j, i) = block(j, i)
+            If block(j, i) Then
+                color = block(j, i)
+            End If
+        Next
+    Next
+    If color = 1 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                block(i, j) = temp(j, 3 - i)
+            Next
+        Next
+    ElseIf color = 3 Then
+        For j = 0 To 3
+            For i = 0 To 3
+                block(i + 1, j + 1) = temp(j + 1, 3 - i)
+            Next
+        Next
+    ElseIf color <> 6 Then
+        For j = 0 To 3
+            For i = 0 To 2
+                block(i + 1, j) = temp(j + 1, 2 - i)
+            Next
+        Next
+    End If
+    leftturnblock = 1
 End Function
 
 Function rakka()
@@ -224,7 +326,6 @@ End Function
 
 Function holdin()
     Dim i As Integer, j As Integer
-    Range("Y5:AB7").Clear
     If holdnow = 0 Then
         For j = 0 To 3
             For i = 0 To 3
@@ -263,7 +364,7 @@ Function gturn()
         Next
 End Function
 
-Function turnblock()
+Function rightturnblock()
     Dim i As Integer, j As Integer, color As Integer
     For j = 0 To 3
         For i = 0 To 3
@@ -292,7 +393,7 @@ Function turnblock()
             Next
         Next
     End If
-    turnblock = 1
+    rightturnblock = 1
 End Function
 
 Function teityaku()
@@ -322,7 +423,7 @@ Function nextpush(ByVal n As Integer)
             
     For j = 0 To 3
         For i = 0 To 3
-            nexts(j, i, n) = object(((randamu * 4) + j) * 4 + i) * (randamu + 1)
+            nexts(j, i, n) = object((randamu * 4 + j) * 4 + i) * (randamu + 1)
         Next
     Next
 End Function
@@ -388,7 +489,7 @@ Function holdhyoji(ByVal a As Integer)
     Dim j As Integer
     For j = 0 To 3
         If (hold(a, j) = 7 Or (hold(a + 1, j) <> 7 And hold(a + 1, j) > 0)) Then
-            Cells(a + 5, j + 25) = "■"
+            Cells(a + 5, j + 25).Font.color = RGB(0, 0, 0)
         End If
     Next
 End Function
@@ -413,7 +514,7 @@ Function hyoji() As Integer
     For a = 0 To 20
         For j = 1 To 10
             If hyfield(a, j, 0) And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
-                Cells(a + 4, j + 10).Font.color = RGB(1, 1, 1)
+                Cells(a + 4, j + 10).Font.color = RGB(0, 0, 0)
                 ' 色を付ける
             ElseIf hyfield(a, j, 0) = 0 And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
                 ' 透明にする（このやり方の方が表示が良かった）
@@ -426,7 +527,6 @@ Function hyoji() As Integer
             hyfield(a, j, 1) = hyfield(a, j, 0)
         Next
     Next
-    Cells(12, 26) = score
 End Function
 
 Function mainclear()
