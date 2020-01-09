@@ -1,4 +1,4 @@
-Option Explicit
+﻿Option Explicit
 
 #If VBA7 Then
 '32bit PC
@@ -7,6 +7,8 @@ Private Declare Function GetAsyncKeyState Lib "user32.dll" (ByVal vKey As Long) 
 '64bit PC
 Private Declare PtrSafe Function GetAsyncKeyState Lib "user32.dll" (ByVal vKey As LongPtr) As Long
 #End If
+
+Dim mono As Long
 
 Dim score As Integer
 Dim field(20, 12) As Integer
@@ -21,8 +23,11 @@ Dim dtime As Double
 Dim holdnow As Integer
 Dim usehold As Integer
 Dim gcon As Integer
+Dim firstblocks(8) As Integer
 
 Sub Tetlis_mono()
+    mono = RGB(73, 73, 73)
+    'mono = RGB(0, 0, 0) ほんとに黒
     holdnow = 0
     usehold = 0
     score = 0
@@ -48,10 +53,10 @@ Sub Tetlis_mono()
     Range("B1:AJ27").EntireColumn.ColumnWidth = 2
     Range("A2:AJ27").EntireRow.RowHeight = 15
     
+    Call mainclear
     Call nextpush(1)
     Call nextpush(2)
     Call nextpush(3)
-    Call mainclear
     Call dainyu
     Call hyoji
     
@@ -409,7 +414,7 @@ End Function
 
 Function nextpush(ByVal n As Integer)
     Dim i As Integer, j As Integer
-    Dim randamu As Integer: randamu = Int(7 * Rnd)
+    Dim randamu As Integer
     Dim object As Variant
     object = Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, _
                     0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, _
@@ -419,8 +424,15 @@ Function nextpush(ByVal n As Integer)
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, _
                     0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, _
                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    Do
+        randamu = Int(7 * Rnd)
+    Loop While firstblocks(7) < 7 And firstblocks(randamu) = 1
     
-            
+    If firstblocks(7) < 7 Then
+        firstblocks(randamu) = 1
+        firstblocks(7) = firstblocks(7) + 1
+    End If
+    
     For j = 0 To 3
         For i = 0 To 3
             nexts(j, i, n) = object((randamu * 4 + j) * 4 + i) * (randamu + 1)
@@ -445,6 +457,7 @@ Function nexthyoji(ByVal a As Integer)
     Dim j As Integer
     For j = 0 To 3
         If ((nexts((a - 1) Mod 5, j, Int(a / 5) + 1) = 7) Or (nexts(a Mod 5, j, Int(a / 5) + 1) <> 7 And nexts(a Mod 5, j, Int(a / 5) + 1) > 0)) Then
+            Cells(a + 4, j + 3).Font.color = mono
             Cells(a + 4, j + 3) = "■"
         End If
     Next
@@ -456,7 +469,7 @@ Function mainhyoji(ByVal a As Integer)
         If j > 0 And j < 11 Then
             If a >= 0 Then
                 hyfield(a, j, 0) = 0
-                If a >= 0 And x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+                If x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
                     If field(a, j) And block(3 - (x - a), j - y - 1) > 0 Then
                         mainhyoji = 1
                         Exit Function
@@ -464,7 +477,7 @@ Function mainhyoji(ByVal a As Integer)
                         hyfield(a, j, 0) = block(3 - (x - a), j - y - 1)
                     End If
                 End If
-                If a >= 0 And field(a, j) Then
+                If field(a, j) Then
                     hyfield(a, j, 0) = field(a, j)
                 End If
             End If
@@ -489,7 +502,7 @@ Function holdhyoji(ByVal a As Integer)
     Dim j As Integer
     For j = 0 To 3
         If (hold(a, j) = 7 Or (hold(a + 1, j) <> 7 And hold(a + 1, j) > 0)) Then
-            Cells(a + 5, j + 25).Font.color = RGB(0, 0, 0)
+            Cells(a + 5, j + 25).Font.color = mono
         End If
     Next
 End Function
@@ -514,7 +527,7 @@ Function hyoji() As Integer
     For a = 0 To 20
         For j = 1 To 10
             If hyfield(a, j, 0) And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
-                Cells(a + 4, j + 10).Font.color = RGB(0, 0, 0)
+                Cells(a + 4, j + 10).Font.color = mono
                 ' 色を付ける
             ElseIf hyfield(a, j, 0) = 0 And hyfield(a, j, 0) <> hyfield(a, j, 1) Then
                 ' 透明にする（このやり方の方が表示が良かった）
@@ -543,5 +556,8 @@ Function mainclear()
             nexts(i, j, 0) = nexts(i, j, 1)
             hold(i, j) = 0
         Next
+    Next
+    For i = 0 To 7
+        firstblocks(i) = 0
     Next
 End Function

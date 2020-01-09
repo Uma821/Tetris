@@ -1,4 +1,4 @@
-Option Explicit
+﻿Option Explicit
 
 #If VBA7 Then
 '32bit PC
@@ -23,6 +23,7 @@ Dim dtime As Double
 Dim holdnow As Integer
 Dim usehold As Integer
 Dim gcon As Integer
+Dim firstblocks(8) As Integer
 
 Sub Tetlis_color()
     tomato = RGB(255, 104, 77)
@@ -57,10 +58,10 @@ Sub Tetlis_color()
     Range("B1:AJ27").EntireColumn.ColumnWidth = 2
     Range("A2:AJ27").EntireRow.RowHeight = 15
     
+    Call mainclear
     Call nextpush(1)
     Call nextpush(2)
     Call nextpush(3)
-    Call mainclear
     Call dainyu
     Call hyoji
     
@@ -418,7 +419,7 @@ End Function
 
 Function nextpush(ByVal n As Integer)
     Dim i As Integer, j As Integer
-    Dim randamu As Integer: randamu = Int(7 * Rnd)
+    Dim randamu As Integer
     Dim object As Variant
     object = Array(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, _
                     0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, _
@@ -428,8 +429,15 @@ Function nextpush(ByVal n As Integer)
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, _
                     0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, _
                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+    Do
+        randamu = Int(7 * Rnd)
+    Loop While firstblocks(7) < 7 And firstblocks(randamu) = 1
     
-            
+    If firstblocks(7) < 7 Then
+        firstblocks(randamu) = 1
+        firstblocks(7) = firstblocks(7) + 1
+    End If
+    
     For j = 0 To 3
         For i = 0 To 3
             nexts(j, i, n) = object((randamu * 4 + j) * 4 + i) * (randamu + 1)
@@ -480,7 +488,7 @@ Function mainhyoji(ByVal a As Integer)
         If j > 0 And j < 11 Then
             If a >= 0 Then
                 hyfield(a, j, 0) = 0
-                If a >= 0 And x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
+                If x - a >= 0 And j - y - 1 >= 0 And x - a < 4 And j - y - 1 < 4 Then
                     If field(a, j) And block(3 - (x - a), j - y - 1) > 0 Then
                         mainhyoji = 1
                         Exit Function
@@ -488,7 +496,7 @@ Function mainhyoji(ByVal a As Integer)
                         hyfield(a, j, 0) = block(3 - (x - a), j - y - 1)
                     End If
                 End If
-                If a >= 0 And field(a, j) Then
+                If field(a, j) Then
                     hyfield(a, j, 0) = field(a, j)
                 End If
             End If
@@ -595,5 +603,8 @@ Function mainclear()
             nexts(i, j, 0) = nexts(i, j, 1)
             hold(i, j) = 0
         Next
+    Next
+    For i = 0 To 7
+        firstblocks(i) = 0
     Next
 End Function
